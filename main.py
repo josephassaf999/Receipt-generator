@@ -10,10 +10,11 @@ import threading
 import pythoncom
 import json
 from PyPDF2 import PdfMerger
+import hashlib
 
 # --- Helper Functions ---
 def sanitize_filename(name):
-    invalid_chars = r'\/:*?"<>|'
+    invalid_chars = r'\\/:*?"<>|'
     for ch in invalid_chars:
         name = name.replace(ch, '')
     return name.strip()
@@ -56,8 +57,6 @@ def save_last_path(file_type, path):
 
 def load_last_paths():
     global excel_file, template_file, output_folder
-    if os.path.exists("last_paths.txt"):
-        os.remove("last_paths.txt")
     if os.path.exists("last_paths.json"):
         try:
             with open("last_paths.json", "r") as f:
@@ -129,7 +128,22 @@ def merge_pdfs(pdf_list, output_pdf):
         print(f"Error during merging PDFs: {e}")
         messagebox.showerror("Error", f"An error occurred during merging PDFs: {e}")
 
-# --- Global Flags ---
+def get_file_hash(file_path):
+    hasher = hashlib.sha256()
+    with open(file_path, 'rb') as f:
+        hasher.update(f.read())
+    return hasher.hexdigest()
+
+def load_progress():
+    if os.path.exists("progress.json"):
+        with open("progress.json", "r") as f:
+            return json.load(f)
+    return {}
+
+def save_progress(progress_data):
+    with open("progress.json", "w") as f:
+        json.dump(progress_data, f, indent=4)
+
 cancel_flag = False
 pause_flag = False
 pause_event = threading.Event()
@@ -153,6 +167,9 @@ def generate_pdfs():
         root.update_idletasks()
         df = pd.read_excel(excel_file)
         os.makedirs(output_folder, exist_ok=True)
+        file_hash = get_file_hash(excel_file)
+        progress_data = load_progress()
+        last_index = progress_data.get(file_hash, -1)
         column_mapping = {
             "Name": "Namn",
             "Address": "Adress",
@@ -161,8 +178,10 @@ def generate_pdfs():
             "Car Number": "Registreringsnr"
         }
         progress['maximum'] = len(df)
-        progress['value'] = 0
+        progress['value'] = last_index + 1
         for index, row in df.iterrows():
+            if index <= last_index:
+                continue
             if cancel_flag:
                 lbl_status.config(text="Process cancelled.")
                 messagebox.showinfo("Cancelled", "PDF generation has been cancelled.")
@@ -192,10 +211,11 @@ def generate_pdfs():
             pdf_filename = os.path.join(output_folder, f"Reklam_{index + 1}.pdf")
             convert_docx_to_pdf(temp_doc_filename, pdf_filename)
             os.remove(temp_doc_filename)
-            generated_pdfs.append(pdf_filename)  # Add the generated PDF to the list
+            generated_pdfs.append(pdf_filename)
             progress['value'] += 1
             root.update_idletasks()
-        # After all PDFs are generated, merge them
+            progress_data[file_hash] = index
+            save_progress(progress_data)
         if generated_pdfs:
             merged_pdf_path = os.path.join(output_folder, "All_Reklam.pdf")
             merge_pdfs(generated_pdfs, merged_pdf_path)
