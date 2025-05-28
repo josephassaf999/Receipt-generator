@@ -179,6 +179,7 @@ def generate_pdfs():
         }
         progress['maximum'] = len(df)
         progress['value'] = last_index + 1
+        generated_pdfs.clear()  # Ensure only current PDFs are used
         for index, row in df.iterrows():
             if index <= last_index:
                 continue
