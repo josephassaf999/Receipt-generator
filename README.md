@@ -1,4 +1,4 @@
-#Excel to PDF Receipt Generator
+# Excel to PDF Receipt Generator
 
 <img width="780" height="631" alt="image" src="https://github.com/user-attachments/assets/3d159bd5-1296-44de-a4a8-72219c443cff" />
 
