@@ -3,7 +3,6 @@ from tkinter import filedialog, messagebox
 from tkinter import ttk
 import pandas as pd
 from docx import Document
-from docx.shared import RGBColor
 import os
 import win32com.client
 import threading
@@ -97,9 +96,7 @@ def replace_placeholder_in_paragraph(paragraph, column_name, value):
         font.bold = saved_font.bold
         font.italic = saved_font.italic
         font.underline = saved_font.underline
-    if column_name == "Car Number":
-        font = new_run.font
-        font.color.rgb = RGBColor(255, 0, 0)
+    # Removed any red text logic
 
 def convert_docx_to_pdf(docx_path, pdf_path):
     try:
@@ -149,7 +146,6 @@ pause_flag = False
 pause_event = threading.Event()
 pause_event.set()
 
-# List to store the generated PDFs
 generated_pdfs = []
 
 # --- Main PDF Generation ---
@@ -170,46 +166,39 @@ def generate_pdfs():
         file_hash = get_file_hash(excel_file)
         progress_data = load_progress()
         last_index = progress_data.get(file_hash, -1)
-        column_mapping = {
-            "Name": "Namn",
-            "Address": "Adress",
-            "Postal Code": "Postadress",
-            "Postal number": "Postnr",
-            "Car Number": "Registreringsnr"
-        }
         progress['maximum'] = len(df)
         progress['value'] = last_index + 1
-        generated_pdfs.clear()  # Ensure only current PDFs are used
+        generated_pdfs.clear()
         for index, row in df.iterrows():
             if index <= last_index:
                 continue
             if cancel_flag:
                 lbl_status.config(text="Process cancelled.")
                 messagebox.showinfo("Cancelled", "PDF generation has been cancelled.")
-                # Merge the PDFs generated so far and save it
                 if generated_pdfs:
-                    merged_pdf_path = os.path.join(output_folder, "All_Reklam.pdf")
+                    merged_pdf_path = os.path.join(output_folder, "All_Receipts.pdf")
                     merge_pdfs(generated_pdfs, merged_pdf_path)
-                    messagebox.showinfo("Success", f"Reklams merged into one PDF!\nSaved in:\n{merged_pdf_path}")
+                    messagebox.showinfo("Success", f"Receipts merged into one PDF!\nSaved in:\n{merged_pdf_path}")
                 return
             pause_event.wait()
             temp_doc = Document(template_file)
-            for placeholder, column_name in column_mapping.items():
-                value = row.get(column_name, '')
+            # Automatically replace all Excel columns
+            for column_name in df.columns:
+                value = row[column_name]
                 if isinstance(value, float) and value.is_integer():
                     value = str(int(value))
                 else:
                     value = str(value)
                 for paragraph in temp_doc.paragraphs:
-                    replace_placeholder_in_paragraph(paragraph, placeholder, value)
+                    replace_placeholder_in_paragraph(paragraph, column_name, value)
                 for table in temp_doc.tables:
                     for row_cells in table.rows:
                         for cell in row_cells.cells:
                             for paragraph in cell.paragraphs:
-                                replace_placeholder_in_paragraph(paragraph, placeholder, value)
-            temp_doc_filename = os.path.join(output_folder, f"Reklam_{index + 1}_modified.docx")
+                                replace_placeholder_in_paragraph(paragraph, column_name, value)
+            temp_doc_filename = os.path.join(output_folder, f"Receipt_{index + 1}_modified.docx")
             temp_doc.save(temp_doc_filename)
-            pdf_filename = os.path.join(output_folder, f"Reklam_{index + 1}.pdf")
+            pdf_filename = os.path.join(output_folder, f"Receipt_{index + 1}.pdf")
             convert_docx_to_pdf(temp_doc_filename, pdf_filename)
             os.remove(temp_doc_filename)
             generated_pdfs.append(pdf_filename)
@@ -218,15 +207,15 @@ def generate_pdfs():
             progress_data[file_hash] = index
             save_progress(progress_data)
         if generated_pdfs:
-            merged_pdf_path = os.path.join(output_folder, "All_Reklam.pdf")
+            merged_pdf_path = os.path.join(output_folder, "All_Receipts.pdf")
             merge_pdfs(generated_pdfs, merged_pdf_path)
-            messagebox.showinfo("Success", f"Reklams merged into one PDF!\nSaved in:\n{merged_pdf_path}")
+            messagebox.showinfo("Success", f"Receipts merged into one PDF!\nSaved in:\n{merged_pdf_path}")
         lbl_status.config(text="PDFs generated and merged successfully!")
     except Exception as e:
         lbl_status.config(text="Error during generation.")
         messagebox.showerror("Error", f"An error occurred:\n{e}")
 
-# --- Control Functions for Buttons ---
+# --- Control Functions ---
 def cancel_generation():
     global cancel_flag
     cancel_flag = True
@@ -247,7 +236,7 @@ def resume_generation():
 
 # --- GUI Setup ---
 root = tk.Tk()
-root.title("Excel to PDF Reklam Generator")
+root.title("Excel to PDF Receipt Generator")
 root.geometry("800x650")
 root.resizable(True, True)
 root.configure(bg="#f5f5f5")
@@ -293,7 +282,7 @@ remember_paths_var = tk.IntVar()
 chk_remember_paths = tk.Checkbutton(root, text="Remember Last Used Files/Folders", variable=remember_paths_var, bg="#f5f5f5")
 chk_remember_paths.pack(pady=10)
 
-btn_generate = tk.Button(root, text="Start Generating Reklams", command=lambda: threading.Thread(target=generate_pdfs).start(), width=30, bg="#4CAF50", fg="white", font=("Arial", 12, "bold"))
+btn_generate = tk.Button(root, text="Start Generating Receipts", command=lambda: threading.Thread(target=generate_pdfs).start(), width=30, bg="#4CAF50", fg="white", font=("Arial", 12, "bold"))
 btn_generate.pack(pady=10)
 
 # Section: Progress
@@ -307,7 +296,6 @@ lbl_status.pack(pady=5)
 frame_controls = tk.Frame(root, bg="#f5f5f5")
 frame_controls.pack(pady=10)
 
-# Increase the width to make the buttons bigger
 btn_cancel = tk.Button(frame_controls, text="Cancel", command=cancel_generation, width=20, bg="#f44336", fg="white", font=("Arial", 12, "bold"))
 btn_cancel.grid(row=0, column=0, padx=10)
 
@@ -317,8 +305,7 @@ btn_pause.grid(row=0, column=1, padx=10)
 btn_resume = tk.Button(frame_controls, text="Resume", command=resume_generation, width=20, bg="#4CAF50", fg="white", font=("Arial", 12, "bold"))
 btn_resume.grid(row=0, column=2, padx=10)
 
-
-# Load last used paths if available
+# Load last used paths
 load_last_paths()
 
 root.mainloop()
