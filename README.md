@@ -22,3 +22,4 @@ Generated PDFs will be saved in the output folder. If the process is cancelled, 
 - Your Excel columns should match the placeholders in your Word template exactly.  
   Example: Excel column `Name` → Word placeholder `{{Name}}`
 - No Python or special software is required—just run the `.exe`.
+- Windows may show a “Protected your PC” warning when first running the program. Click More info → Run anyway to start AutoReceiptPro.
