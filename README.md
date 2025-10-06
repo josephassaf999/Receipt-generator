@@ -1,5 +1,7 @@
 #Excel to PDF Receipt Generator
 
+<img width="780" height="631" alt="image" src="https://github.com/user-attachments/assets/3d159bd5-1296-44de-a4a8-72219c443cff" />
+
 This Python tool lets you generate receipt PDFs from Excel data using a Word template. It works on Windows and allows you to create individual PDFs per row or a merged PDF for all rows. You can pause, resume, or cancel the process anytime.
 
 How to Use
