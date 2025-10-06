@@ -31,6 +31,8 @@ Upload your Word template.
 
 Select an output folder.
 
+Make sure the output folder's name is one word
+
 (Optional) Check “Remember Last Used Files/Folders”.
 
 Click Start Generating Receipts.
